@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alphabet Spatial Awareness Exercise</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+    svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background-color: white;
+      transition: background-color 0.5s;
+    }
+    text {
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+  </style>
+</head>
+<body>
+  <svg></svg>
+  <script>
+    const config = {
+      minSize: 0.25, // in inches
+      maxSize: 1, // in inches
+      smileys: ["😊", "😄", "😃", "😉", "😆"]
+    };
+
+    const svg = d3.select("svg");
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    const smiley = config.smileys[Math.floor(Math.random() * config.smileys.length)];
+
+    svg.append("text")
+      .attr("x", centerX)
+      .attr("y", centerY)
+      .attr("font-size", `${config.minSize}in`)
+      .text(smiley);
+
+    const nodes = alphabet.map(letter => {
+      const angle = Math.random() * 2 * Math.PI;
+      const distance = Math.random() * Math.min(centerX, centerY);
+      return {
+        letter,
+        x: centerX + distance * Math.cos(angle),
+        y: centerY + distance * Math.sin(angle),
+      };
+    });
+
+    const simulation = d3.forceSimulation(nodes)
+      .force("charge", d3.forceManyBody().strength(60))
+      .force("center", d3.forceCenter(centerX, centerY))
+      .force("collision", d3.forceCollide().radius(d => {
+        const distance = Math.hypot(d.x - centerX, d.y - centerY);
+        const size = config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY));
+        return size * 72 / 2 + 36; // convert inches to points, divide by 2 for radius, add 36 to avoid overlapping with the smiley
+      }))
+      .on("tick", update);
+
+    function update() {
+      const texts = svg.selectAll("text.alphabet")
+        .data(nodes, d => d.letter);
+
+      texts.enter().append("text")
+        .attr("class", "alphabet")
+        .text(d => d.letter)
+        .attr("x", d => d.x)
+        .attr("y", d => d.y)
+        .attr("font-size", d => {
+          const distance = Math.hypot(d.x - centerX, d.y - centerY);
+          return `${config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY))}in`;
+        })
+        .on("touchstart", onTouch)
+        .on("mousedown", onTouch);
+    }
+
+    let currentIndex = 0;
+    function onTouch(event, d) {
+      event.preventDefault();
+      if (d.letter === alphabet[currentIndex]) {
+        svg.transition()
+          .style("background-color", "lightgreen")
+          .duration(500)
+          .on("end", () => svg.style("background-color", "white"));
+
+        d3.select(this).remove(); // remove the tapped letter
+        currentIndex++;
+
+        if (currentIndex === alphabet.length) {
+          setTimeout(() => {
+            // Restart the exercise
+            currentIndex = 0;
+            simulation.nodes(alphabet.map(letter => {
+              const angle = Math.random() * 2 * Math.PI;
+              const distance = Math.random() * Math.min(centerX, centerY);
+              return {
+                letter,
+                x: centerX + distance * Math.cos(angle),
+                y: centerY + distance * Math.sin(angle),
+              };
+            })).alpha(1).restart();
+
+            svg.select("text")
+              .text(config.smileys[Math.floor(Math.random() * config.smileys.length)]);
+          }, 2000); // Delay before restarting
+        }
+      } else {
+        svg.transition()
+          .style("background-color", "lightcoral")
+          .duration(500)
+          .on("end", () => svg.style("background-color", "white"));
+      }
+    }
+  </script>
+</body>
+</html>
+
