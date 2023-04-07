@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -31,8 +31,8 @@
   <svg></svg>
   <script>
     const config = {
-      minSize: 0.25, // in inches
-      maxSize: 1, // in inches
+      minSize: 0.01, // fraction of screen size
+      maxSize: 0.08, // fraction of screen size
       smileys: ["😊", "😄", "😃", "😉", "😆"]
     };
 
@@ -48,12 +48,12 @@
     svg.append("text")
       .attr("x", centerX)
       .attr("y", centerY)
-      .attr("font-size", `${config.minSize}in`)
+      .attr("font-size", `${config.minSize * Math.min(width, height)}px`)
       .text(smiley);
 
     const nodes = alphabet.map(letter => {
       const angle = Math.random() * 2 * Math.PI;
-      const distance = Math.random() * Math.min(centerX, centerY);
+      const distance = Math.random() * Math.min(centerX, centerY) / 2;
       return {
         letter,
         x: centerX + distance * Math.cos(angle),
@@ -62,13 +62,15 @@
     });
 
     const simulation = d3.forceSimulation(nodes)
-      .force("charge", d3.forceManyBody().strength(60))
+      .force("charge", d3.forceManyBody().strength(120))
       .force("center", d3.forceCenter(centerX, centerY))
       .force("collision", d3.forceCollide().radius(d => {
         const distance = Math.hypot(d.x - centerX, d.y - centerY);
-        const size = config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY));
-        return size * 72 / 2 + 36; // convert inches to points, divide by 2 for radius, add 36 to avoid overlapping with the smiley
+        const size = config.minSize + (config.maxSize - config.minSize) * (distance / (Math.min(centerX, centerY) / 2));
+        return 4 * size * Math.min(width, height) / 2 + 36; // convert to pixels, divide by 2 for radius, add 36 to avoid overlapping with the smiley
       }))
+      .force('x', d3.forceX().x(centerX).strength(1.0*height/(width+height)))
+      .force('y', d3.forceY().y(centerY).strength(1.0*width/(width+height)))
       .on("tick", update);
 
     function update() {
@@ -77,15 +79,36 @@
 
       texts.enter().append("text")
         .attr("class", "alphabet")
-        .text(d => d.letter)
+        .text(d => d.letter);
+      texts
+        .attr("font-size", d => {
+          const distance = Math.hypot(d.x - centerX, d.y - centerY);
+          return `${(config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY))) * Math.min(width, height)}px`;
+        })
+        .attr("x", d => {
+
+          const distance = Math.hypot(d.x - centerX, d.y - centerY);
+          const fontSize = (config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY))) * Math.min(width, height);
+          d.x = Math.max(fontSize, Math.min(width-fontSize, d.x));
+          return d.x;
+        })
+        .attr("y", d => {
+
+          const distance = Math.hypot(d.x - centerX, d.y - centerY);
+          const fontSize = (config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY))) * Math.min(width, height);
+          d.y = Math.max(fontSize, Math.min(height-fontSize, d.y));
+          return d.y;
+        })
+        .on("touchstart", onTouch)
+        .on("mousedown", onTouch);
+
+      texts
         .attr("x", d => d.x)
         .attr("y", d => d.y)
         .attr("font-size", d => {
           const distance = Math.hypot(d.x - centerX, d.y - centerY);
-          return `${config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY))}in`;
-        })
-        .on("touchstart", onTouch)
-        .on("mousedown", onTouch);
+          return `${(config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY))) * Math.min(width, height)}px`;
+        });
     }
 
     let currentIndex = 0;
@@ -97,35 +120,51 @@
           .duration(500)
           .on("end", () => svg.style("background-color", "white"));
 
-        d3.select(this).remove(); // remove the tapped letter
+        nodes.splice(nodes.findIndex(node => node.letter === d.letter), 1); // remove the tapped letter from the nodes array
         currentIndex++;
 
         if (currentIndex === alphabet.length) {
           setTimeout(() => {
             // Restart the exercise
             currentIndex = 0;
-            simulation.nodes(alphabet.map(letter => {
+            nodes.length = 0;
+            nodes.push(...alphabet.map(letter => {
               const angle = Math.random() * 2 * Math.PI;
-              const distance = Math.random() * Math.min(centerX, centerY);
+              const distance = Math.random() * Math.min(centerX, centerY) / 2;
               return {
                 letter,
                 x: centerX + distance * Math.cos(angle),
                 y: centerY + distance * Math.sin(angle),
               };
-            })).alpha(1).restart();
+            }));
+            simulation.nodes(nodes).alpha(1).restart();
 
             svg.select("text")
               .text(config.smileys[Math.floor(Math.random() * config.smileys.length)]);
           }, 2000); // Delay before restarting
         }
       } else {
-        svg.transition()
-          .style("background-color", "lightcoral")
-          .duration(500)
-          .on("end", () => svg.style("background-color", "white"));
+        svg.style("background-color", "lightcoral");
+        setTimeout(() => svg.style("background-color", "white"), 500);
       }
     }
+
+    // Background tap event
+    svg.on("touchstart", (event) => {
+      event.preventDefault();
+      if (event.target.tagName !== "text") {
+        svg.style("background-color", "lightcoral");
+        setTimeout(() => svg.style("background-color", "white"), 500);
+      }
+    });
+
+    svg.on("mousedown", (event) => {
+      event.preventDefault();
+      if (event.target.tagName !== "text") {
+        svg.style("background-color", "lightcoral");
+        setTimeout(() => svg.style("background-color", "white"), 500);
+      }
+    });
   </script>
 </body>
 </html>
-
