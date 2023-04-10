@@ -1,18 +1,18 @@
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alphabet Spatial Awareness Exercise</title>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      font-family: sans-serif;
-      overflow: hidden;
-    }
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alphabet Spatial Awareness Exercise</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: sans-serif;
+  overflow: hidden;
+}
     button {
       position: fixed;
       top: 0;
@@ -28,193 +28,250 @@
       text-anchor: middle;
       dominant-baseline: central;
     }
-  </style>
-</head>
-<body>
-  <svg>
-    <defs>
+    </style>
+  </head>
+  <body>
+    <svg>
+      <defs>
       <marker id="arrowhead" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
-        <path d="M 0 0 L 10 5 L 0 10 z" fill="blue"/>
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="blue"/>
       </marker>
-    </defs>
-  </svg>
-  <button id="visualizeErrors" style="display: none;">Visualize Errors</button>
+      </defs>
+    </svg>
+    <button id="visualizeErrors" style="display: none;">Visualize Errors</button>
 
-  <script>
-    const config = {
-      minSize: 0.01, // fraction of screen size
-      maxSize: 0.08, // fraction of screen size
-      smileys: ["😊", "😄", "😃", "😉", "😆"]
-    };
-
-    const key = `${new Date().toISOString().slice(0, 10)}`
-    const svg = d3.select("svg");
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    const centerX = width / 2;
-    const centerY = height / 2;
-
-    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-    const smiley = config.smileys[Math.floor(Math.random() * config.smileys.length)];
-
-    svg.append("text")
-      .attr("x", centerX)
-      .attr("y", centerY)
-      .attr("font-size", `${config.minSize * Math.min(width, height)}px`)
-      .text(smiley);
-
-    const nodes = alphabet.map(letter => {
-      const angle = Math.random() * 2 * Math.PI;
-      const distance = Math.random() * Math.min(centerX, centerY) / 2;
-      return {
-        letter,
-        x: centerX + distance * Math.cos(angle),
-        y: centerY + distance * Math.sin(angle),
+    <script>
+      const config = {
+        minSize: 0.01, // fraction of screen size
+        maxSize: 0.08, // fraction of screen size
+        smileys: ["😊", "😄", "😃", "😉", "😆"]
       };
-    });
 
-    const simulation = d3.forceSimulation(nodes)
-      .force("charge", d3.forceManyBody().strength(-120))
-      .force("center", d3.forceCenter(centerX, centerY))
-      .force("collision", d3.forceCollide().radius(d => {
-        const distance = Math.hypot(d.x - centerX, d.y - centerY);
-        const size = config.minSize + (config.maxSize - config.minSize) * (distance / (Math.hypot(centerX, centerY)));
-        return 10 * size * Math.min(centerX, centerY) + 100;
-      }))
-      .force('x', d3.forceX().x(centerX).strength(2.0*height/(width+height)))
-      .force('y', d3.forceY().y(centerY).strength(2.0*width/(width+height)))
-      .on("tick", update);
+      const key = `${new Date().toISOString().slice(0, 10)}`
+      const svg = d3.select("svg");
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const centerX = width / 2;
+      const centerY = height / 2;
 
-    function update() {
-      const texts = svg.selectAll("text.alphabet")
-        .data(nodes, d => d.letter);
+      const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+      const smiley = config.smileys[Math.floor(Math.random() * config.smileys.length)];
+        const cols = [
+          0.0,
+          0.2265625,
+          0.309375,
+          0.34739583333333335,
+          0.39739583333333334,
+          0.453125,
+          .5,
+          1-0.453125,
+          1-0.39739583333333334,
+          1-0.34739583333333335,
+          1-0.309375,
+          1-0.2265625,
+          1,
+        ]
 
-      texts.enter().append("text")
-        .attr("class", "alphabet")
-        .text(d => d.letter);
-      texts
-        .attr("font-size", d => {
-          const distance = Math.hypot(d.x - centerX, d.y - centerY);
-          return `${(config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY))) * Math.min(width, height)}px`;
-        })
-        .attr("x", d => {
+        const rows = [
+          0,
+          0.23666666666666666,
+          0.2833333333333333,
+          0.3491666666666667,
+          0.43416666666666665,
+          .5,
+          1-0.43416666666666665,
+          1-0.3491666666666667,
+          1-0.2833333333333333,
+          1-0.23666666666666666,
+          1
+        ]
 
-          const distance = Math.hypot(d.x - centerX, d.y - centerY);
-          const fontSize = (config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY))) * Math.min(width, height);
-          d.x = Math.max(fontSize, Math.min(width-fontSize, d.x));
-          return d.x;
-        })
-        .attr("y", d => {
-          const distance = Math.hypot(d.x - centerX, d.y - centerY);
-          const fontSize = (config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY))) * Math.min(width, height);
-          d.y = Math.max(fontSize, Math.min(height-fontSize, d.y));
-          return d.y;
+      const positions = [
+        [0, 0],
+        [6, 0],
+        [12, 0],
+        [2, 1],
+        [10, 1],
+        [6, 2],
+        [3, 3],
+        [10, 3],
+        [5, 4],
+        [7, 4],
+        [0, 5],
+        [1, 5],
+        [3, 5],
+        [9, 5],
+        [11, 5],
+        [12, 5],
+        [5, 6],
+        [7, 6],
+        [3, 7],
+        [10, 7],
+        [6, 8],
+        [2, 9],
+        [10, 9],
+        [0, 10],
+        [6, 10],
+        [12, 10]
+      ].map(([x, y]) => ([cols[x], rows[y]]));
+
+      positions.sort((_a, _b_) => Math.random()-.5) 
+
+      let nodes;
+
+      function setup() {
+        svg.append("text")
+          .attr("x", centerX)
+          .attr("y", centerY)
+          .attr("font-size", `${config.minSize * Math.min(width, height)}px`)
+          .text(smiley);
+
+        nodes = alphabet.map((letter, i) => {
+          const [x, y] = positions[i];
+          return {
+            letter,
+            x: config.maxSize*(width) + x * (width * (1-2*config.maxSize - config.minSize)),
+            y: config.maxSize*(height) + y * (height * (1-2*config.maxSize - config.minSize)),
+          };
         });
+        update();
+      }
 
-      texts
-        .attr("x", d => d.x)
-        .attr("y", d => d.y)
-        .attr("font-size", d => {
-          const distance = Math.hypot(d.x - centerX, d.y - centerY);
-          return `${(config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY))) * Math.min(width, height)}px`;
-        });
-    }
+      function update() {
+        const texts = svg.selectAll("text.alphabet")
+          .data(nodes, d => d.letter);
 
-  let currentIndex = 0;
-  function pageTouch(event) {
-      const [x, y] = d3.pointers(event, this)[0];
+        texts.enter().append("text")
+          .attr("class", "alphabet")
+          .text(d => d.letter)
+          .attr("x", d => d.x)
+          .attr("y", d => d.y)
+          .attr("font-size", d => {
+            const distance = Math.hypot(d.x - centerX, d.y - centerY);
+            return `${(config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY))) * Math.max(width, height)}px`;
+          });
+      }
 
-      let minDist = Infinity;
-      let closestNode = null;
+      let currentIndex = 0;
 
-      for (const node of nodes) {
-        const dist = Math.hypot(node.x - x, node.y - y);
-        if (dist < minDist) {
-          minDist = dist;
-          closestNode = node;
+      function pageTouch(event) {
+        const [x, y] = d3.pointers(event, this)[0];
+
+        let minDist = Infinity;
+        let closestNode = null;
+
+        for (const node of nodes) {
+          const dist = Math.hypot(node.x - x, node.y - y);
+          if (dist < minDist) {
+            minDist = dist;
+            closestNode = node;
+          }
+        }
+
+        let correctNode = nodes.find(n => n.letter === alphabet[currentIndex]);
+        let letterNearest = closestNode && closestNode.letter
+        let correct = closestNode?.letter === correctNode?.letter;
+
+        if (correct) {
+          // Correct tap
+          svg.transition()
+            .style("background-color", "lightgreen")
+            .duration(500)
+            .on("end", () => svg.style("background-color", "white"));
+
+          currentIndex++;
+        } else {
+          // Incorrect tap
+          svg.style("background-color", "lightcoral");
+          setTimeout(() => svg.style("background-color", "white"), 500);
+        }
+
+        const tapData = {
+          timestamp: new Date().getTime(),
+          needed: {
+            letter: correctNode.letter,
+            x: correctNode.x,
+            y: correctNode.y
+          },
+          tapped: {
+            letter: closestNode.letter,
+            x: x,
+            y: y
+          },
+          correct,
+        };
+
+        const log = JSON.parse(localStorage.getItem(key) || "[]");
+        localStorage.setItem(key, JSON.stringify([...log, tapData]));
+
+        if (currentIndex === alphabet.length) {
+          onFinish();
         }
       }
 
-      let correctNode = nodes.find(n => n.letter === alphabet[currentIndex]);
-      let letterNearest = closestNode && closestNode.letter
-      let correct = closestNode?.letter === correctNode?.letter;
+      function onFinish() {
+        stats(key, key)
+        document.getElementById("visualizeErrors").style.display = "block";
+      }
 
-      if (correct) {
-        // Correct tap
-        svg.transition()
-          .style("background-color", "lightgreen")
-          .duration(500)
-          .on("end", () => svg.style("background-color", "white"));
+      function days(startDate, endDate) {
+        const dateArray = [];
 
-        currentIndex++;
+        if (!startDate || !endDate) {
+          const storedDates = Object.keys(localStorage).filter(d => !isNaN(new Date(d)));
+          storedDates.sort();
+          startDate = startDate || storedDates[0] || new Date();
+          endDate = endDate || storedDates[storedDates.length - 1] || new Date();
+        }
+
+        let currentDate = new Date(startDate);
+        endDate = new Date(endDate);
+        while (currentDate <= endDate) {
+          dateArray.push(new Date(currentDate).toISOString().slice(0,10));
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        return dateArray;
+      }
+
+      function stats(startDate, endDate) {
+        let tapLogs = days(startDate, endDate).flatMap(key => JSON.parse(localStorage.getItem(key) || "[]"));
+
+        svg.selectAll("line.error")
+          .data(tapLogs.filter(l => {
+            const errMag = Math.hypot(l.needed.x-l.tapped.x, l.needed.y-l.tapped.y);
+            return errMag > 15 && l.correct
+          }))
+          .join("line")
+          .attr("class", "error")
+          .attr("x1", d => d.needed.x)
+          .attr("y1", d => d.needed.y)
+          .attr("x2", d => d.tapped.x)
+          .attr("y2", d => d.tapped.y)
+          .attr("stroke", "blue")
+          .attr("stroke-width", "5")
+          .attr("stroke-opacity", "0.2")
+          .attr("marker-end", "url(#arrowhead)");
+
+        svg.selectAll("circle.incorrect")
+          .data(tapLogs.filter(d => !d.correct))
+          .join("circle")
+          .attr("class", "incorrect")
+          .attr("cx", d => d.needed.x)
+          .attr("cy", d => d.needed.y)
+          .attr("r", "8")
+          .attr("fill", "red")
+          .attr("fill-opacity", "0.4");
+      }
+
+      const statParam = new URLSearchParams(window.location.search).get("stats");
+      if (statParam !== null) {
+        stats(statParam.split("/")[0], statParam.split("/")[1])
       } else {
-        // Incorrect tap
-        svg.style("background-color", "lightcoral");
-        setTimeout(() => svg.style("background-color", "white"), 500);
+        document.getElementById("visualizeErrors").addEventListener("click", () => (stats(key, key)));
+        document.body.addEventListener("touchstart", pageTouch);
+        setup()
       }
 
-      const tapData = {
-        timestamp: new Date().getTime(),
-        needed: {
-          letter: correctNode.letter,
-          x: correctNode.x,
-          y: correctNode.y
-        },
-        tapped: {
-          letter: closestNode.letter,
-          x: x,
-          y: y
-        },
-        correct,
-      };
-
-      const log = JSON.parse(localStorage.getItem(key) || "[]");
-      localStorage.setItem(key, JSON.stringify([...log, tapData]));
-
-      if (currentIndex === alphabet.length) {
-        onFinish();
-      }
-    }
-
-    function onFinish() {
-      document.getElementById("visualizeErrors").style.display = "block";
-    }
-
-    document.getElementById("visualizeErrors").addEventListener("click", function() {
-      let tapLogs = JSON.parse(localStorage.getItem(key) || "[]");
-
-      svg.selectAll("line.error")
-        .data(tapLogs.filter(l => {
-          const errMag = Math.hypot(l.needed.x-l.tapped.x, l.needed.y-l.tapped.y);
-          return errMag > 15
-        }))
-        .join("line")
-        .attr("class", "error")
-        .attr("x1", d => d.needed.x)
-        .attr("y1", d => d.needed.y)
-        .attr("x2", d => d.tapped.x)
-        .attr("y2", d => d.tapped.y)
-        .attr("stroke", "blue")
-        .attr("stroke-width", "5")
-        .attr("stroke-opacity", "0.2")
-        .attr("marker-end", "url(#arrowhead)");
-
-      ;
-
-      svg.selectAll("circle.incorrect")
-        .data(tapLogs.filter(d => !d.correct))
-        .join("circle")
-        .attr("class", "incorrect")
-        .attr("cx", d => d.tapped.x)
-        .attr("cy", d => d.tapped.y)
-        .attr("r", "8")
-        .attr("fill", "red")
-        .attr("fill-opacity", "0.2");
-    });
-
-
-    document.body.addEventListener("touchstart", pageTouch);
-
-  </script>
-</body>
+    </script>
+  </body>
 </html>
