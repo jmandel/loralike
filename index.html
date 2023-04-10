@@ -1,4 +1,3 @@
->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -14,6 +13,10 @@
       font-family: sans-serif;
       overflow: hidden;
     }
+    button {
+      position: fixed;
+      top: 0;
+    }
     svg {
       display: block;
       width: 100%;
@@ -28,7 +31,15 @@
   </style>
 </head>
 <body>
-  <svg></svg>
+  <svg>
+    <defs>
+      <marker id="arrowhead" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="blue"/>
+      </marker>
+    </defs>
+  </svg>
+  <button id="visualizeErrors" style="display: none;">Visualize Errors</button>
+
   <script>
     const config = {
       minSize: 0.01, // fraction of screen size
@@ -36,6 +47,7 @@
       smileys: ["😊", "😄", "😃", "😉", "😆"]
     };
 
+    const key = `${new Date().toISOString().slice(0, 10)}`
     const svg = d3.select("svg");
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -62,15 +74,15 @@
     });
 
     const simulation = d3.forceSimulation(nodes)
-      .force("charge", d3.forceManyBody().strength(120))
+      .force("charge", d3.forceManyBody().strength(-120))
       .force("center", d3.forceCenter(centerX, centerY))
       .force("collision", d3.forceCollide().radius(d => {
         const distance = Math.hypot(d.x - centerX, d.y - centerY);
-        const size = config.minSize + (config.maxSize - config.minSize) * (distance / (Math.min(centerX, centerY) / 2));
-        return 4 * size * Math.min(width, height) / 2 + 36; // convert to pixels, divide by 2 for radius, add 36 to avoid overlapping with the smiley
+        const size = config.minSize + (config.maxSize - config.minSize) * (distance / (Math.hypot(centerX, centerY)));
+        return 10 * size * Math.min(centerX, centerY) + 100;
       }))
-      .force('x', d3.forceX().x(centerX).strength(1.0*height/(width+height)))
-      .force('y', d3.forceY().y(centerY).strength(1.0*width/(width+height)))
+      .force('x', d3.forceX().x(centerX).strength(2.0*height/(width+height)))
+      .force('y', d3.forceY().y(centerY).strength(2.0*width/(width+height)))
       .on("tick", update);
 
     function update() {
@@ -93,14 +105,11 @@
           return d.x;
         })
         .attr("y", d => {
-
           const distance = Math.hypot(d.x - centerX, d.y - centerY);
           const fontSize = (config.minSize + (config.maxSize - config.minSize) * (distance / Math.min(centerX, centerY))) * Math.min(width, height);
           d.y = Math.max(fontSize, Math.min(height-fontSize, d.y));
           return d.y;
-        })
-        .on("touchstart", onTouch)
-        .on("mousedown", onTouch);
+        });
 
       texts
         .attr("x", d => d.x)
@@ -111,60 +120,101 @@
         });
     }
 
-    let currentIndex = 0;
-    function onTouch(event, d) {
-      event.preventDefault();
-      if (d.letter === alphabet[currentIndex]) {
+  let currentIndex = 0;
+  function pageTouch(event) {
+      const [x, y] = d3.pointers(event, this)[0];
+
+      let minDist = Infinity;
+      let closestNode = null;
+
+      for (const node of nodes) {
+        const dist = Math.hypot(node.x - x, node.y - y);
+        if (dist < minDist) {
+          minDist = dist;
+          closestNode = node;
+        }
+      }
+
+      let correctNode = nodes.find(n => n.letter === alphabet[currentIndex]);
+      let letterNearest = closestNode && closestNode.letter
+      let correct = closestNode?.letter === correctNode?.letter;
+
+      if (correct) {
+        // Correct tap
         svg.transition()
           .style("background-color", "lightgreen")
           .duration(500)
           .on("end", () => svg.style("background-color", "white"));
 
-        nodes.splice(nodes.findIndex(node => node.letter === d.letter), 1); // remove the tapped letter from the nodes array
         currentIndex++;
-
-        if (currentIndex === alphabet.length) {
-          setTimeout(() => {
-            // Restart the exercise
-            currentIndex = 0;
-            nodes.length = 0;
-            nodes.push(...alphabet.map(letter => {
-              const angle = Math.random() * 2 * Math.PI;
-              const distance = Math.random() * Math.min(centerX, centerY) / 2;
-              return {
-                letter,
-                x: centerX + distance * Math.cos(angle),
-                y: centerY + distance * Math.sin(angle),
-              };
-            }));
-            simulation.nodes(nodes).alpha(1).restart();
-
-            svg.select("text")
-              .text(config.smileys[Math.floor(Math.random() * config.smileys.length)]);
-          }, 2000); // Delay before restarting
-        }
       } else {
+        // Incorrect tap
         svg.style("background-color", "lightcoral");
         setTimeout(() => svg.style("background-color", "white"), 500);
+      }
+
+      const tapData = {
+        timestamp: new Date().getTime(),
+        needed: {
+          letter: correctNode.letter,
+          x: correctNode.x,
+          y: correctNode.y
+        },
+        tapped: {
+          letter: closestNode.letter,
+          x: x,
+          y: y
+        },
+        correct,
+      };
+
+      const log = JSON.parse(localStorage.getItem(key) || "[]");
+      localStorage.setItem(key, JSON.stringify([...log, tapData]));
+
+      if (currentIndex === alphabet.length) {
+        onFinish();
       }
     }
 
-    // Background tap event
-    svg.on("touchstart", (event) => {
-      event.preventDefault();
-      if (event.target.tagName !== "text") {
-        svg.style("background-color", "lightcoral");
-        setTimeout(() => svg.style("background-color", "white"), 500);
-      }
+    function onFinish() {
+      document.getElementById("visualizeErrors").style.display = "block";
+    }
+
+    document.getElementById("visualizeErrors").addEventListener("click", function() {
+      let tapLogs = JSON.parse(localStorage.getItem(key) || "[]");
+
+      svg.selectAll("line.error")
+        .data(tapLogs.filter(l => {
+          const errMag = Math.hypot(l.needed.x-l.tapped.x, l.needed.y-l.tapped.y);
+          return errMag > 15
+        }))
+        .join("line")
+        .attr("class", "error")
+        .attr("x1", d => d.needed.x)
+        .attr("y1", d => d.needed.y)
+        .attr("x2", d => d.tapped.x)
+        .attr("y2", d => d.tapped.y)
+        .attr("stroke", "blue")
+        .attr("stroke-width", "5")
+        .attr("stroke-opacity", "0.2")
+        .attr("marker-end", "url(#arrowhead)");
+
+      ;
+
+      svg.selectAll("circle.incorrect")
+        .data(tapLogs.filter(d => !d.correct))
+        .join("circle")
+        .attr("class", "incorrect")
+        .attr("cx", d => d.tapped.x)
+        .attr("cy", d => d.tapped.y)
+        .attr("r", "8")
+        .attr("fill", "red")
+        .attr("fill-opacity", "0.2");
     });
 
-    svg.on("mousedown", (event) => {
-      event.preventDefault();
-      if (event.target.tagName !== "text") {
-        svg.style("background-color", "lightcoral");
-        setTimeout(() => svg.style("background-color", "white"), 500);
-      }
-    });
+
+    document.body.addEventListener("touchstart", pageTouch);
+
   </script>
 </body>
 </html>
