@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smooth Pursuit Circles</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #app {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #controls {
+            margin-bottom: 1rem;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+        }
+        #speed-label, #direction-label {
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="controls">
+            <label id="speed-label" for="speed">Speed:</label>
+            <input type="range" id="speed" min="1" max="40" value="5">
+            <label id="direction-label" for="direction">Direction:</label>
+            <input type="range" id="direction" min="-1" max="1" value="1" step="2">
+        </div>
+        <svg id="svg" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+            <circle cx="50" cy="50" r="40" stroke="black" stroke-width="1" fill="none"/>
+            <circle id="dot" cx="50" cy="10" r="2" fill="red"/>
+        </svg>
+    </div>
+    <script>
+        const svg = document.getElementById('svg');
+        const dot = document.getElementById('dot');
+        const speedInput = document.getElementById('speed');
+        const directionInput = document.getElementById('direction');
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const speedParam = parseFloat(urlParams.get('speed'));
+        const directionParam = parseFloat(urlParams.get('direction'));
+
+        if (speedParam) speedInput.value = speedParam;
+        if (directionParam) directionInput.value = directionParam;
+
+        let angle = 0;
+        const radius = 40;
+        const centerX = 50;
+        const centerY = 50;
+
+        function resizeSvg() {
+            const size = Math.min(window.innerWidth, window.innerHeight) - 50; // Subtract 50 to account for controls
+            svg.setAttribute('width', size);
+            svg.setAttribute('height', size);
+        }
+
+        window.addEventListener('resize', resizeSvg);
+        resizeSvg();
+
+        function animate() {
+            angle += (parseFloat(speedInput.value) / 1000) * parseFloat(directionInput.value);
+            const x = centerX + radius * Math.cos(angle);
+            const y = centerY + radius * Math.sin(angle);
+            dot.setAttribute('cx', x);
+            dot.setAttribute('cy', y);
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
